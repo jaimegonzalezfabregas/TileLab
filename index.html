@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+
+    <style>
+        #color_display {
+            display: none;
+            width: 100%;
+            height: 200px;
+            position: relative;
+            top: 0;
+            left: 0;
+            z-index: 100;
+        }
+
+        #old_color {
+            width: 20%;
+            height: 100%;
+            float: left;
+        }
+
+        #new_color {
+            width: 20%;
+            height: 100%;
+            float: left;
+        }
+
+        #picker_box {
+            margin: 10px;
+        }
+    </style>
+</head>
+
+<body style="overflow: hidden;">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-3">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link active" id="home-tab"
+                            data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home"
+                            aria-selected="true">Planning</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="profile-tab"
+                            data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab"
+                            aria-controls="profile" aria-selected="false">Drawing</button></li>
+                </ul>
+                <div class="tab-content vh-100" id="myTabContent">
+                    <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                        <h1>Tiles</h1>
+                        <h1>Boards</h1>
+                    </div>
+                    <div class="tab-pane fade " id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                        <div id="picker_box">
+                            <div id="picker"></div>
+                        </div>
+                        <h1>palette</h1>
+
+
+                        <div class="btn-group" role="group" aria-label="Basic example">
+                            <button type="button" id="add_button" class="btn btn-secondary"
+                                onclick="add_palette_item()">Add
+                                Color</button>
+                            <button type="button" id="delete_button" class="btn btn-secondary"
+                                onclick="delete_palette_item()" disabled>Delete Selected</button>
+                            <button type="button" id="deselect_button" class="btn btn-secondary"
+                                onclick="deselect_palette_item()" disabled>Deselect</button>
+                        </div>
+                        <div class="overflow-auto" style="height: 45vh;">
+                            <div class="d-flex p-2 flex-wrap" id="palette">
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-9 h-100">
+                <div id="color_display">
+                    <div id="old_color"></div>
+                    <div id="new_color"></div>
+                </div><canvas id="canvas" class="h-100 w-100"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+    <script>
+
+        const deselect_button = document.getElementById("deselect_button")
+        const delete_button = document.getElementById("delete_button")
+        const add_button = document.getElementById("add_button")
+
+        const start_color = "#ffffff"
+        var colorPicker = new iro.ColorPicker('#picker');
+        colorPicker.color.hexString = start_color;
+        document.getElementById("old_color").style.backgroundColor = start_color
+
+
+        colorPicker.on('color:change', function (color) {
+            document.getElementById("new_color").style.backgroundColor = color.hexString
+            if (selected != null) {
+                selected.style.backgroundColor = color.hexString
+            }
+        });
+
+        colorPicker.on('input:start', function (color) {
+            document.getElementById("color_display").style.display = "block"
+        });
+
+        colorPicker.on('input:end', function (color) {
+            document.getElementById("color_display").style.display = "none"
+            document.getElementById("old_color").style.backgroundColor = color.hexString
+        });
+
+        let selected = null;
+
+        function delete_palette_item() {
+            if (selected != null) {
+                document.getElementById("palette").removeChild(selected)
+            }
+        }
+
+        function deselect_palette_item() {
+            if (selected != null) {
+                selected.style.border = "none"
+                selected = null;
+            }
+            delete_button.disabled = true;
+            deselect_button.disabled = true;
+        }
+
+        function new_palette_item(color) {
+            var div = document.createElement("div");
+            div.style.backgroundColor = color
+            div.classList.add("palette_item");
+            div.style.width = "50px"
+            div.style.height = "50px"
+            div.style.margin = "5px"
+            div.style.borderRadius = "5px"
+            div.style.cursor = "pointer"
+            div.style.border = "none"
+            div.style.boxShadow = "0px 0px 5px 0px rgba(0,0,0,0.25)"
+            div.addEventListener("click", function () {
+                delete_button.disabled = false;
+                deselect_button.disabled = false;
+                selected = div;
+                document.querySelectorAll(".palette_item").forEach(function (item) {
+                    item.style.border = "none"
+                })
+                div.style.border = "2px solid black"
+                colorPicker.color.hexString = color;
+                document.getElementById("old_color").style.backgroundColor = color
+            })
+            return div
+        }
+
+        function add_palette_item() {
+            document.getElementById("palette").appendChild(new_palette_item(colorPicker.color.hexString))
+        }
+    </script>
+</body>
+
+</html>
