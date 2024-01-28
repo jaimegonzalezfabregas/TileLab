@@ -1,4 +1,5 @@
 
+let pallete_item_selected_id = null;
 
 const start_color = "#ffffff"
 var colorPicker = new iro.ColorPicker('#picker', {
@@ -13,9 +14,14 @@ set_active_color(start_color);
 
 colorPicker.on('color:change', function (color) {
     document.getElementById("new_color").style.backgroundColor = color.hexString
-    if (selected != null) {
+    if (pallete_item_selected_id != null) {
+
+        const selected = document.getElementById(pallete_item_selected_id)
         selected.style.backgroundColor = color.hexString
-        selected.setAttribute("hex_color", color.hexString)
+        project.palette[pallete_item_selected_id] = color.hexString
+
+        refresh_canvas();
+        update_pallete();
     }
 });
 
@@ -28,56 +34,71 @@ colorPicker.on('input:end', function (color) {
     set_active_color(color.hexString)
 });
 
-let selected = null;
 
 function delete_palette_item() {
-    if (selected != null) {
-        document.getElementById("palette").removeChild(selected)
+    if (pallete_item_selected_id != null) {
+        delete project.palette[pallete_item_selected_id]
+        refresh_canvas();
+        update_pallete();
     }
-    delete_button.disabled = true;
-    deselect_button.disabled = true;
 }
 
 function deselect_palette_item() {
-    if (selected != null) {
-        selected.style.border = "none"
-        selected = null;
-    }
-    delete_button.disabled = true;
-    deselect_button.disabled = true;
+    pallete_item_selected_id = null;
+    update_pallete();
 }
 
 function set_active_color(hex_color) {
     colorPicker.color.hexString = hex_color;
     document.getElementById("old_color").style.backgroundColor = hex_color
+    refresh_canvas();
+    update_pallete();
 }
 
 function add_palette_item() {
 
-    let hex_color = colorPicker.color.hexString
-    var div = document.createElement("div");
-    div.setAttribute("hex_color", hex_color)
+    let id = uniqid();
+    project.palette[id] = colorPicker.color.hexString;
+    pallete_item_selected_id = id;
 
-    div.style.backgroundColor = hex_color
-    div.classList.add("palette_item");
-    div.style.width = "50px"
-    div.style.height = "50px"
-    div.style.margin = "5px"
-    div.style.borderRadius = "5px"
-    div.style.cursor = "pointer"
-    div.style.border = "none"
-    div.style.boxShadow = "0px 0px 5px 0px rgba(0,0,0,0.25)"
+    update_pallete();
+}
 
-    div.addEventListener("click", function () {
+
+function update_pallete() {
+
+    document.getElementById("palette").innerHTML = "";
+
+    if (pallete_item_selected_id == null) {
+        delete_button.disabled = true;
+        deselect_button.disabled = true;
+    } else {
         delete_button.disabled = false;
         deselect_button.disabled = false;
-        selected = div;
-        document.querySelectorAll(".palette_item").forEach(function (item) {
-            item.style.border = "none"
-        })
-        div.style.border = "2px solid black"
-        set_active_color(div.getAttribute("hex_color"))
-    })
-    div.click()
-    document.getElementById("palette").appendChild(div)
+    }
+
+    for (let id in project.palette) {
+        var div = document.createElement("div");
+        div.classList.add("palette_item");
+        div.style.backgroundColor = project.palette[id]
+        div.id = id;
+
+        if (pallete_item_selected_id == id) {
+            if (colorPicker.color.value < 50 || (colorPicker.color.red < 100 && colorPicker.color.green < 100)) {
+                div.style.border = "2px solid white"
+            } else {
+                div.style.border = "2px solid black"
+            }
+        }
+
+        const select = () => {
+            pallete_item_selected_id = id;
+            set_active_color(project.palette[id])
+            update_pallete();
+
+        };
+        div.addEventListener("click", select)
+        document.getElementById("palette").appendChild(div)
+    }
+
 }
