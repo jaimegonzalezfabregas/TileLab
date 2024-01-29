@@ -1,14 +1,18 @@
 function refresh_canvas() {
-
-    const tileresolution = project.parameters.tileresolution;
-    const scenetiles = project.parameters.scenetiles;
+    const tileresolution = get_ro_project().parameters.tileresolution;
+    const scenetiles = get_ro_project().parameters.scenetiles;
 
 
     const canvas_width = canvas.clientWidth;
     const canvas_height = canvas.clientHeight;
-    canvas.width = canvas_width;
-    canvas.height = canvas_height;
 
+    const context = canvas.getContext('2d');
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Will always clear the right space
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.restore();
 
     const canvas_size = Math.min(canvas_width, canvas_height);
     const tilesize = canvas_size / scenetiles;
@@ -22,7 +26,7 @@ function refresh_canvas() {
         ctx.textAlign = "center";
         ctx.fillText("No scene selected", canvas_width / 2, canvas_height / 2);
     } else {
-        let selected_scene = project.scenes[selected_scene_id];
+        const selected_scene = get_ro_project().scenes[selected_scene_id];
         if (!selected_scene.tiles) selected_scene.tiles = []
 
         for (let x = 0; x < scenetiles; x++) {
@@ -35,7 +39,7 @@ function refresh_canvas() {
                 let name = "no tile";
 
                 if (selected_scene.tiles[x][y] != null) {
-                    let tile = project.tiles[selected_scene.tiles[x][y]];
+                    const tile = get_ro_project().tiles[selected_scene.tiles[x][y]];
                     if (tile) {
                         if (mode == "planning") {
                             name = tile.name;
@@ -44,7 +48,10 @@ function refresh_canvas() {
                         }
                         draw_tile_at_pos(ctx, tile, tile_x, tile_y, tilesize, tileresolution);
                     } else {
-                        selected_scene.tiles[x][y] = null;
+                        mut_project((project) => {
+                            project.scenes[selected_scene_id].tiles[x][y] = null;
+                            return project;
+                        })
                     }
                 }
                 ctx.beginPath();
@@ -82,8 +89,8 @@ function draw_tile_at_pos(ctx, tile, offset_x, offset_y, tileside, tileresolutio
         for (y = 0; y < tileresolution; y++) {
             if (tile.color[x][y]) {
                 let color_id = tile.color[x][y];
-                if (color_id && project.palette[color_id]) {
-                    ctx.fillStyle = project.palette[color_id];
+                if (color_id && get_ro_project().palette[color_id]) {
+                    ctx.fillStyle = get_ro_project().palette[color_id];
 
                     ctx.fillRect(offset_x + (x * pixel_size), offset_y + (y * pixel_size), pixel_size + 1, pixel_size + 1);
                 }
@@ -93,7 +100,6 @@ function draw_tile_at_pos(ctx, tile, offset_x, offset_y, tileside, tileresolutio
 
 }
 
-refresh_canvas();
 
 
 canvas.addEventListener("click", (e) => {
@@ -104,17 +110,20 @@ canvas.addEventListener("click", (e) => {
     const canvas_width = canvas.clientWidth;
     const canvas_height = canvas.clientHeight;
     const canvas_size = Math.min(canvas_width, canvas_height);
-    const tilesize = canvas_size / project.parameters.scenetiles;
+    const tilesize = canvas_size / get_ro_project().parameters.scenetiles;
     const offset_x = (canvas_width - canvas_size) / 2;
     const offset_y = (canvas_height - canvas_size) / 2;
 
     let tile_x = Math.floor((mouse_x - offset_x) / tilesize);
     let tile_y = Math.floor((mouse_y - offset_y) / tilesize);
 
-    if (tile_x < 0 || tile_y < 0 || tile_x >= project.parameters.scenetiles || tile_y >= project.parameters.scenetiles) return;
+    if (tile_x < 0 || tile_y < 0 || tile_x >= get_ro_project().parameters.scenetiles || tile_y >= get_ro_project().parameters.scenetiles) return;
 
     if (mode == "planning" || mode == "file") {
-        project.scenes[selected_scene_id].tiles[tile_x][tile_y] = selected_tile_id;
+        mut_project((project) => {
+            project.scenes[selected_scene_id].tiles[tile_x][tile_y] = selected_tile_id;
+            return project;
+        });
     } else if (mode == "drawing") {
         canvas_click_at(mouse_x, mouse_y)
     }
@@ -162,7 +171,15 @@ function canvas_click(e) {
         for (let i = 0; i < substeps; i++) {
             let step_x = last_mouse_x + ((mouse_x - last_mouse_x) * (i / substeps));
             let step_y = last_mouse_y + ((mouse_y - last_mouse_y) * (i / substeps));
-            canvas_click_at(step_x, step_y, e.buttons == 2);
+
+            const invertedTransform = ctx.getTransform().invertSelf();
+
+            const originalClick = invertedTransform.transformPoint({ x: step_x, y: step_y });
+
+            // Call a function to draw something at the clicked position
+            canvas_click_at(originalClick.x, originalClick.y, e.buttons == 2);
+
+
         }
 
         refresh_canvas();
@@ -175,10 +192,11 @@ function canvas_click(e) {
 
 
 function canvas_click_at(mouse_x, mouse_y, pick_color = true) {
+    if (mode != "drawing") return;
     const canvas_width = canvas.clientWidth;
     const canvas_height = canvas.clientHeight;
     const canvas_size = Math.min(canvas_width, canvas_height);
-    const tilesize = canvas_size / project.parameters.scenetiles;
+    const tilesize = canvas_size / get_ro_project().parameters.scenetiles;
     const offset_x = (canvas_width - canvas_size) / 2;
     const offset_y = (canvas_height - canvas_size) / 2;
 
@@ -188,21 +206,22 @@ function canvas_click_at(mouse_x, mouse_y, pick_color = true) {
     let tile_x_offset = Math.floor((mouse_x - offset_x) % tilesize);
     let tile_y_offset = Math.floor((mouse_y - offset_y) % tilesize);
 
-    let tile_pixel_size = tilesize / project.parameters.tileresolution;
+    let tile_pixel_size = tilesize / get_ro_project().parameters.tileresolution;
 
     let tile_pixel_x = Math.floor(tile_x_offset / tile_pixel_size);
     let tile_pixel_y = Math.floor(tile_y_offset / tile_pixel_size);
 
-    let clicked_tile = project.scenes[selected_scene_id].tiles[tile_x][tile_y];
+    let clicked_tile = get_ro_project().scenes[selected_scene_id].tiles[tile_x][tile_y];
 
-
-    if (!pick_color) {
-        project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y] = pallete_item_selected_id;
-    } else {
-        pallete_item_selected_id = project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y];
-        update_pallete()
-    }
-
+    mut_project((project) => {
+        if (!pick_color) {
+            project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y] = pallete_item_selected_id;
+        } else {
+            pallete_item_selected_id = project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y];
+            update_pallete()
+        }
+        return project
+    });
 
 }
 
@@ -215,5 +234,62 @@ window.oncontextmenu = function (event) {
 };
 
 // on resize update canvas
-window.addEventListener("resize", refresh_canvas);
 
+const canvas_on_resize = () => {
+    const canvas_width = canvas.clientWidth;
+    const canvas_height = canvas.clientHeight;
+    canvas.width = canvas_width;
+    canvas.height = canvas_height;
+    refresh_canvas()
+}
+window.addEventListener("resize", canvas_on_resize);
+
+
+// drag
+
+
+
+let isDragging = false;
+let lastX = 0;
+let lastY = 0;
+
+let zoom = 1;
+
+canvas.addEventListener('mousedown', (e) => {
+    if (e.button === 1) { // Check if the middle mouse button is clicked
+        isDragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+    }
+});
+
+canvas.addEventListener('mouseup', () => {
+    isDragging = false;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+        const deltaX = e.clientX - lastX;
+        const deltaY = e.clientY - lastY;
+
+        ctx.translate(deltaX / zoom, deltaY / zoom);
+        lastX = e.clientX;
+        lastY = e.clientY;
+        refresh_canvas();
+    }
+});
+
+canvas.addEventListener('wheel', (e) => {
+    console.log(e.deltaY);
+    const scaleFactor = e.deltaY > 0 ? 1.1 : 0.9;
+    zoom *= scaleFactor;
+
+    const mouseX = e.clientX - canvas.getBoundingClientRect().left;
+    const mouseY = e.clientY - canvas.getBoundingClientRect().top;
+
+    ctx.translate(mouseX, mouseY);
+    ctx.scale(scaleFactor, scaleFactor);
+    ctx.translate(-mouseX, -mouseY);
+
+    refresh_canvas();
+});

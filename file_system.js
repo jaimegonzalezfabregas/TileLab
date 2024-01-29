@@ -1,5 +1,5 @@
 function update_download() {
-    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project));
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(get_ro_project()));
     saveButton.setAttribute("href", dataStr);
     saveButton.setAttribute("download", "TileLabProject.json");
 }
@@ -14,20 +14,22 @@ function load_file() {
     reader.onload = function () {
         let text = reader.result
 
-        project = JSON.parse(text);
+        let new_loaded_project = JSON.parse(text);
 
-        update_pallete()
-        update_tile_list()
-        update_scene_list()
 
-        if (!project.parameters) project.parameters = {};
-        if (!project.palette) project.palette = {};
 
-        if (!project.parameters) project.parameters = {};
+        if (!new_loaded_project.parameters) new_loaded_project.parameters = {};
+        if (!new_loaded_project.palette) new_loaded_project.palette = {};
 
-        tileresolution_input.value = project.parameters.tileresolution;
-        scenetiles_input.value = project.parameters.scenetiles;
+        if (!new_loaded_project.parameters) new_loaded_project.parameters = {};
 
+        tileresolution_input.value = new_loaded_project.parameters.tileresolution;
+        scenetiles_input.value = new_loaded_project.parameters.scenetiles;
+
+
+        mut_project((_) => {
+            return new_loaded_project;
+        });
 
         update_download()
 
@@ -35,6 +37,10 @@ function load_file() {
 
         check_editable_project()
         undo_stack = [];
+        update_pallete()
+        update_tile_list()
+        update_scene_list()
+        refresh_canvas()
 
     };
 
@@ -44,28 +50,32 @@ file_input.addEventListener("input", load_file);
 
 function update_tile_size() {
     create_checkpoint()
-
-    project.parameters.tileresolution = tileresolution_input.value;
+    mut_project((project) => {
+        project.parameters.tileresolution = tileresolution_input.value;
+        return project;
+    });
     update_download()
     check_editable_project()
 
 }
 tileresolution_input.addEventListener("input", update_tile_size);
 
-update_tile_size();
 
 
 function update_scene_size() {
     create_checkpoint()
 
-    project.parameters.scenetiles = scenetiles_input.value;
+    mut_project((project) => {
+        project.parameters.scenetiles = scenetiles_input.value;
+        return project;
+    });
     update_download()
     check_editable_project()
 
 }
 scenetiles_input.addEventListener("input", update_scene_size);
 
-update_scene_size();
+
 
 function check_editable_project() {
     refresh_canvas();
@@ -78,5 +88,36 @@ function check_editable_project() {
         planning_button.disabled = false;
         drawing_button.disabled = false;
         warning.style.display = "none";
+    }
+}
+
+let cache = null;
+
+function mut_project(fnc) {
+    let old_project;
+
+    let stored_data = localStorage.getItem('project');
+
+    old_project = cache || JSON.parse(stored_data) || default_project()
+
+    const new_project = fnc(old_project);
+
+    cache = new_project;
+
+    if (stored_data != JSON.stringify(new_project)) {
+        localStorage.setItem('project', JSON.stringify(new_project));
+    }
+}
+
+function get_ro_project() {
+    return cache || JSON.parse(localStorage.getItem('project')) || default_project();
+}
+
+function default_project() {
+    return {
+        parameters: {},
+        palette: {},
+        tiles: {},
+        scenes: {}
     }
 }

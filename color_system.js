@@ -38,7 +38,6 @@ let colorPicker = new iro.ColorPicker('#picker', {
 });
 
 
-set_active_color(start_color);
 
 let started = false;
 
@@ -52,8 +51,10 @@ colorPicker.on(['input:move', 'input:start'], function (color) {
         }
         const selected = document.getElementById(pallete_item_selected_id)
         selected.style.backgroundColor = color.hexString
-        project.palette[pallete_item_selected_id] = color.hexString
-
+        mut_project((project) => {
+            project.palette[pallete_item_selected_id] = color.hexString
+            return project;
+        });
         refresh_canvas();
         update_pallete();
     }
@@ -66,7 +67,10 @@ colorPicker.on("input:end", () => {
 function delete_palette_item() {
     if (pallete_item_selected_id != null) {
         create_checkpoint()
-        delete project.palette[pallete_item_selected_id]
+        mut_project((project) => {
+            delete project.palette[pallete_item_selected_id]
+            return project;
+        });
         refresh_canvas();
         update_pallete();
 
@@ -85,8 +89,9 @@ function set_active_color(hex_color) {
 }
 
 function referesh_color_picker() {
-    console.log("refresh color picker with", project.palette[pallete_item_selected_id])
-    colorPicker.color.hexString = project.palette[pallete_item_selected_id];
+
+    console.log("refresh color picker with", get_ro_project().palette[pallete_item_selected_id])
+    colorPicker.color.hexString = get_ro_project().palette[pallete_item_selected_id];
 
 }
 
@@ -94,7 +99,10 @@ function add_palette_item() {
     create_checkpoint()
 
     let id = uniqid();
-    project.palette[id] = colorPicker.color.hexString;
+    mut_project((project) => {
+        project.palette[id] = colorPicker.color.hexString;
+        return project;
+    });
     pallete_item_selected_id = id;
 
     update_pallete();
@@ -113,10 +121,12 @@ function update_pallete() {
         deselect_button.disabled = false;
     }
 
-    for (let id in project.palette) {
+    const palette = get_ro_project().palette;
+
+    for (let id in palette) {
         let div = document.createElement("div");
         div.classList.add("palette_item");
-        div.style.backgroundColor = project.palette[id]
+        div.style.backgroundColor = palette[id]
         div.id = id;
 
         if (pallete_item_selected_id == id) {
