@@ -1,7 +1,5 @@
 function refresh_canvas() {
 
-    console.log("refreshing canvas")
-
     const tileresolution = project.parameters.tileresolution;
     const scenetiles = project.parameters.scenetiles;
 
@@ -87,7 +85,7 @@ function draw_tile_at_pos(ctx, tile, offset_x, offset_y, tileside, tileresolutio
                 if (color_id && project.palette[color_id]) {
                     ctx.fillStyle = project.palette[color_id];
 
-                    ctx.fillRect(offset_x + (x * pixel_size), offset_y + (y * pixel_size), pixel_size, pixel_size);
+                    ctx.fillRect(offset_x + (x * pixel_size), offset_y + (y * pixel_size), pixel_size + 1, pixel_size + 1);
                 }
             }
         }
@@ -122,6 +120,7 @@ canvas.addEventListener("click", (e) => {
     }
 
     refresh_canvas();
+    update_tile_list();
     update_download();
 
 })
@@ -131,24 +130,51 @@ canvas.addEventListener("click", (e) => {
 let mouse_down = false;
 
 canvas.addEventListener("mousedown", (e) => {
+    create_checkpoint()
+
     mouse_down = true;
+    canvas_click(e)
 })
 canvas.addEventListener("mouseup", (e) => {
     mouse_down = false;
+    last_mouse_x = null;
+    last_mouse_y = null;
 })
+
+let last_mouse_x = null;
+let last_mouse_y = null;
+
+const substeps = 20;
 
 canvas.addEventListener("mousemove", (e) => {
-    if (mouse_down) {
-        let mouse_x = e.offsetX;
-        let mouse_y = e.offsetY;
-        canvas_click_at(mouse_x, mouse_y);
-        refresh_canvas();
-        update_download();
-    }
+    canvas_click(e)
 })
 
+function canvas_click(e) {
+    if (mouse_down) {
+        const mouse_x = e.offsetX;
+        const mouse_y = e.offsetY;
 
-function canvas_click_at(mouse_x, mouse_y) {
+
+        if (last_mouse_x == null) last_mouse_x = mouse_x;
+        if (last_mouse_y == null) last_mouse_y = mouse_y;
+
+        for (let i = 0; i < substeps; i++) {
+            let step_x = last_mouse_x + ((mouse_x - last_mouse_x) * (i / substeps));
+            let step_y = last_mouse_y + ((mouse_y - last_mouse_y) * (i / substeps));
+            canvas_click_at(step_x, step_y, e.buttons == 2);
+        }
+
+        refresh_canvas();
+        update_tile_list();
+        update_download();
+        last_mouse_x = mouse_x;
+        last_mouse_y = mouse_y;
+    }
+}
+
+
+function canvas_click_at(mouse_x, mouse_y, pick_color = true) {
     const canvas_width = canvas.clientWidth;
     const canvas_height = canvas.clientHeight;
     const canvas_size = Math.min(canvas_width, canvas_height);
@@ -169,13 +195,25 @@ function canvas_click_at(mouse_x, mouse_y) {
 
     let clicked_tile = project.scenes[selected_scene_id].tiles[tile_x][tile_y];
 
-    console.log(clicked_tile, project.tiles[clicked_tile])
-    console.log(tile_pixel_x, tile_pixel_y)
 
-    project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y] = pallete_item_selected_id;
+    if (!pick_color) {
+        project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y] = pallete_item_selected_id;
+    } else {
+        pallete_item_selected_id = project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y];
+        update_pallete()
+    }
 
 
 }
 
+window.oncontextmenu = function (event) {
+    if (mode == "drawing") {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+    }
+};
+
 // on resize update canvas
 window.addEventListener("resize", refresh_canvas);
+

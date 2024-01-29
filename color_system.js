@@ -2,11 +2,38 @@
 let pallete_item_selected_id = null;
 
 const start_color = "#ffffff"
-var colorPicker = new iro.ColorPicker('#picker', {
+let colorPicker = new iro.ColorPicker('#picker', {
     width: 200,
     color: start_color,
     borderWidth: 1,
     borderColor: "#fff",
+    layout: [
+        {
+            component: iro.ui.Wheel,
+            options: {
+                borderColor: '#ffffff'
+            }
+        },
+        {
+            component: iro.ui.Slider,
+            options: {
+                sliderType: 'hue'
+            }
+        },
+        {
+            component: iro.ui.Slider,
+            options: {
+                sliderType: 'saturation'
+            }
+        },
+        {
+            component: iro.ui.Slider,
+            options: {
+                // can also be 'saturation', 'value', 'red', 'green', 'blue', 'alpha' or 'kelvin'
+                sliderType: 'value'
+            }
+        },
+    ]
 
 });
 
@@ -26,20 +53,24 @@ colorPicker.on('color:change', function (color) {
 });
 
 colorPicker.on('input:start', function (color) {
+    create_checkpoint()
     document.getElementById("color_display").style.display = "block"
 });
 
 colorPicker.on('input:end', function (color) {
     document.getElementById("color_display").style.display = "none"
     set_active_color(color.hexString)
+
 });
 
 
 function delete_palette_item() {
     if (pallete_item_selected_id != null) {
+        create_checkpoint()
         delete project.palette[pallete_item_selected_id]
         refresh_canvas();
         update_pallete();
+
     }
 }
 
@@ -56,6 +87,7 @@ function set_active_color(hex_color) {
 }
 
 function add_palette_item() {
+    create_checkpoint()
 
     let id = uniqid();
     project.palette[id] = colorPicker.color.hexString;
@@ -78,7 +110,7 @@ function update_pallete() {
     }
 
     for (let id in project.palette) {
-        var div = document.createElement("div");
+        let div = document.createElement("div");
         div.classList.add("palette_item");
         div.style.backgroundColor = project.palette[id]
         div.id = id;
@@ -89,6 +121,7 @@ function update_pallete() {
             } else {
                 div.style.border = "2px solid black"
             }
+
         }
 
         const select = () => {

@@ -1,5 +1,5 @@
 function update_download() {
-    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project));
+    let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(project));
     saveButton.setAttribute("href", dataStr);
     saveButton.setAttribute("download", "TileLabProject.json");
 }
@@ -13,8 +13,6 @@ function load_file() {
 
     reader.onload = function () {
         let text = reader.result
-
-        console.log("loading:", text);
 
         project = JSON.parse(text);
 
@@ -30,12 +28,14 @@ function load_file() {
         tileresolution_input.value = project.parameters.tileresolution;
         scenetiles_input.value = project.parameters.scenetiles;
 
-    
+
         update_download()
 
         document.getElementById("empty_project_warning").style.display = "none";
 
         check_editable_project()
+        undo_stack = [];
+
     };
 
 }
@@ -43,10 +43,12 @@ function load_file() {
 file_input.addEventListener("input", load_file);
 
 function update_tile_size() {
+    create_checkpoint()
 
     project.parameters.tileresolution = tileresolution_input.value;
     update_download()
     check_editable_project()
+
 }
 tileresolution_input.addEventListener("input", update_tile_size);
 
@@ -54,10 +56,12 @@ update_tile_size();
 
 
 function update_scene_size() {
+    create_checkpoint()
 
     project.parameters.scenetiles = scenetiles_input.value;
     update_download()
     check_editable_project()
+
 }
 scenetiles_input.addEventListener("input", update_scene_size);
 
@@ -65,11 +69,14 @@ update_scene_size();
 
 function check_editable_project() {
     refresh_canvas();
+    const warning = document.getElementById("unconfigured_project_warning");
     if (tileresolution_input.value == "" || scenetiles_input.value == "") {
         planning_button.disabled = true;
         drawing_button.disabled = true;
+        warning.style.display = "block";
     } else {
         planning_button.disabled = false;
         drawing_button.disabled = false;
+        warning.style.display = "none";
     }
 }
