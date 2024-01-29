@@ -37,12 +37,19 @@ let colorPicker = new iro.ColorPicker('#picker', {
 
 });
 
+
 set_active_color(start_color);
 
-colorPicker.on('color:change', function (color) {
-    document.getElementById("new_color").style.backgroundColor = color.hexString
+let started = false;
+
+colorPicker.on(['input:move', 'input:start'], function (color) {
+
     if (pallete_item_selected_id != null) {
 
+        if (!started) {
+            started = true;
+            create_checkpoint("color change")
+        }
         const selected = document.getElementById(pallete_item_selected_id)
         selected.style.backgroundColor = color.hexString
         project.palette[pallete_item_selected_id] = color.hexString
@@ -52,17 +59,9 @@ colorPicker.on('color:change', function (color) {
     }
 });
 
-colorPicker.on('input:start', function (color) {
-    create_checkpoint()
-    document.getElementById("color_display").style.display = "block"
-});
-
-colorPicker.on('input:end', function (color) {
-    document.getElementById("color_display").style.display = "none"
-    set_active_color(color.hexString)
-
-});
-
+colorPicker.on("input:end", () => {
+    started = false;
+})
 
 function delete_palette_item() {
     if (pallete_item_selected_id != null) {
@@ -81,9 +80,14 @@ function deselect_palette_item() {
 
 function set_active_color(hex_color) {
     colorPicker.color.hexString = hex_color;
-    document.getElementById("old_color").style.backgroundColor = hex_color
     refresh_canvas();
     update_pallete();
+}
+
+function referesh_color_picker() {
+    console.log("refresh color picker with", project.palette[pallete_item_selected_id])
+    colorPicker.color.hexString = project.palette[pallete_item_selected_id];
+
 }
 
 function add_palette_item() {
@@ -117,9 +121,9 @@ function update_pallete() {
 
         if (pallete_item_selected_id == id) {
             if (colorPicker.color.value < 50 || (colorPicker.color.red < 100 && colorPicker.color.green < 100)) {
-                div.style.border = "2px solid white"
+                div.style.border = "5px solid white"
             } else {
-                div.style.border = "2px solid black"
+                div.style.border = "5px solid black"
             }
 
         }
