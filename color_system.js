@@ -110,7 +110,7 @@ function add_palette_item() {
 
 
 function update_pallete() {
-
+    console.log("selected", pallete_item_selected_id)
     document.getElementById("palette").innerHTML = "";
 
     if (pallete_item_selected_id == null) {
@@ -139,8 +139,9 @@ function update_pallete() {
         }
 
         const select = () => {
+            console.log("select", id)
             pallete_item_selected_id = id;
-            set_active_color(project.palette[id])
+            set_active_color(palette[id])
             update_pallete();
 
         };

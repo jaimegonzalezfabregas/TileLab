@@ -102,39 +102,7 @@ function draw_tile_at_pos(ctx, tile, offset_x, offset_y, tileside, tileresolutio
 
 
 
-canvas.addEventListener("click", (e) => {
-
-    let mouse_x = e.offsetX;
-    let mouse_y = e.offsetY;
-
-    const canvas_width = canvas.clientWidth;
-    const canvas_height = canvas.clientHeight;
-    const canvas_size = Math.min(canvas_width, canvas_height);
-    const tilesize = canvas_size / get_ro_project().parameters.scenetiles;
-    const offset_x = (canvas_width - canvas_size) / 2;
-    const offset_y = (canvas_height - canvas_size) / 2;
-
-    let tile_x = Math.floor((mouse_x - offset_x) / tilesize);
-    let tile_y = Math.floor((mouse_y - offset_y) / tilesize);
-
-    if (tile_x < 0 || tile_y < 0 || tile_x >= get_ro_project().parameters.scenetiles || tile_y >= get_ro_project().parameters.scenetiles) return;
-
-    if (mode == "planning" || mode == "file") {
-        mut_project((project) => {
-            project.scenes[selected_scene_id].tiles[tile_x][tile_y] = selected_tile_id;
-            return project;
-        });
-    } else if (mode == "drawing") {
-        canvas_click_at(mouse_x, mouse_y)
-    }
-
-    refresh_canvas();
-    update_tile_list();
-    update_download();
-
-})
-
-// draw while holding the mouse donw
+canvas.addEventListener("click", canvas_click)
 
 let mouse_down = false;
 
@@ -177,7 +145,7 @@ function canvas_click(e) {
             const originalClick = invertedTransform.transformPoint({ x: step_x, y: step_y });
 
             // Call a function to draw something at the clicked position
-            canvas_click_at(originalClick.x, originalClick.y, e.buttons == 2);
+            canvas_click_at(originalClick.x, originalClick.y, e.buttons);
 
 
         }
@@ -190,9 +158,13 @@ function canvas_click(e) {
     }
 }
 
+const CLICK = 1;
+const PICK = 2;
 
-function canvas_click_at(mouse_x, mouse_y, pick_color = true) {
-    if (mode != "drawing") return;
+function canvas_click_at(mouse_x, mouse_y, buttons) {
+
+    console.log("buttons", buttons)
+
     const canvas_width = canvas.clientWidth;
     const canvas_height = canvas.clientHeight;
     const canvas_size = Math.min(canvas_width, canvas_height);
@@ -214,19 +186,32 @@ function canvas_click_at(mouse_x, mouse_y, pick_color = true) {
     let clicked_tile = get_ro_project().scenes[selected_scene_id].tiles[tile_x][tile_y];
 
     mut_project((project) => {
-        if (!pick_color) {
-            project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y] = pallete_item_selected_id;
-        } else {
-            pallete_item_selected_id = project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y];
-            update_pallete()
+
+        if (mode == "planning") {
+            if (buttons == CLICK) {
+                project.scenes[selected_scene_id].tiles[tile_x][tile_y] = selected_tile_id;
+            }else if (buttons == PICK) {
+                selected_tile_id = project.scenes[selected_scene_id].tiles[tile_x][tile_y];
+                update_tile_list()
+            }
+        } else if (mode == "drawing") {
+            if (buttons == CLICK) {
+                if (!project.tiles[clicked_tile].locked) {
+                    project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y] = pallete_item_selected_id;
+                }
+            } else if (buttons == PICK) {
+                pallete_item_selected_id = project.tiles[clicked_tile].color[tile_pixel_x][tile_pixel_y];
+                update_pallete()
+            }
         }
         return project
+
     });
 
 }
 
 window.oncontextmenu = function (event) {
-    if (mode == "drawing") {
+    if (mode == "drawing" || mode == "planning") {
         event.preventDefault();
         event.stopPropagation();
         return false;

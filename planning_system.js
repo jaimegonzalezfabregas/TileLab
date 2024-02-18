@@ -23,6 +23,9 @@ let new_scene = () => {
     update_download();
 }
 
+let clipboard = null;
+let clipboard_tile_id = null;
+
 function update_tile_list() {
     let tile_list = document.getElementById("tile_list")
     tile_list.innerHTML = ""
@@ -53,6 +56,11 @@ function update_tile_list() {
             if (selected_tile_id == tile_id) {
                 tile_item.classList.add("active")
             }
+            if (tile.locked) {
+                const lock_icon = document.createElement("i")
+                lock_icon.classList.add("fa", "fa-lock", "m-1")
+                tile_item.appendChild(lock_icon)
+            }
 
             const delete_button = document.createElement("button")
             delete_button.classList.add("btn", "btn-danger", "float-end", "m-1")
@@ -79,7 +87,46 @@ function update_tile_list() {
                     tile.name = new_name
                     update_tile_list()
                 }
+
             }
+
+            const lock_button = document.createElement("button")
+            lock_button.classList.add("btn", "btn-secondary", "float-end", "m-1")
+            lock_button.innerHTML = '<i class="fa fa-lock" aria-hidden="true"></i>'
+            lock_button.onclick = () => {
+                create_checkpoint()
+                tile.locked = !tile.locked;
+                update_tile_list();
+            }
+
+            const copy_button = document.createElement("button")
+            copy_button.innerHTML = '<i class="fa fa-copy" aria-hidden="true"></i>'
+
+            if (clipboard_tile_id == tile_id) {
+                copy_button.classList.add("btn", "btn-success", "float-end", "m-1")
+            } else {
+                copy_button.classList.add("btn", "btn-secondary", "float-end", "m-1")
+
+            }
+            copy_button.onclick = () => {
+                clipboard = tile.color;
+                clipboard_tile_id = tile_id;
+            }
+
+            const paste_button = document.createElement("button")
+            paste_button.classList.add("btn", "btn-secondary", "float-end", "m-1")
+            paste_button.innerHTML = '<i class="fa fa-paste" aria-hidden="true"></i>'
+            paste_button.onclick = () => {
+                create_checkpoint()
+                mut_project((project) => {
+                    project.tiles[tile_id].color = JSON.parse(JSON.stringify(clipboard));
+                    return project;
+                }
+                );
+                refresh_canvas();
+                update_tile_list();
+            }
+
 
             const download_button = document.createElement("button");
             download_button.classList.add("btn", "btn-secondary", "float-end", "m-1")
@@ -91,8 +138,11 @@ function update_tile_list() {
                 return false;
             });
 
-            tile_item.appendChild(download_button)
 
+            tile_item.appendChild(copy_button)
+            tile_item.appendChild(paste_button)
+            tile_item.appendChild(download_button)
+            tile_item.appendChild(lock_button)
             tile_item.appendChild(edit_button)
             tile_item.appendChild(delete_button)
             tile_list.appendChild(tile_item)

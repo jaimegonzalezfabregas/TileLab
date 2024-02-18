@@ -14,6 +14,8 @@ function load_file() {
     reader.onload = function () {
         let text = reader.result
 
+        console.log(text)
+
         let new_loaded_project = JSON.parse(text);
 
 
@@ -27,13 +29,9 @@ function load_file() {
         scenetiles_input.value = new_loaded_project.parameters.scenetiles;
 
 
-        mut_project((_) => {
-            return new_loaded_project;
-        });
+        set_project(new_loaded_project);
 
         update_download()
-
-        document.getElementById("empty_project_warning").style.display = "none";
 
         check_editable_project()
         undo_stack = [];
@@ -93,6 +91,11 @@ function check_editable_project() {
 
 let cache = null;
 
+function set_project(new_project) {
+    cache = new_project;
+    localStorage.setItem('project', JSON.stringify(new_project));
+}
+
 function mut_project(fnc) {
     let old_project;
 
@@ -102,10 +105,14 @@ function mut_project(fnc) {
 
     const new_project = fnc(old_project);
 
-    cache = new_project;
+    if (new_project) {
+        cache = new_project;
 
-    if (stored_data != JSON.stringify(new_project)) {
-        localStorage.setItem('project', JSON.stringify(new_project));
+        if (stored_data != JSON.stringify(new_project)) {
+            localStorage.setItem('project', JSON.stringify(new_project));
+        }
+    } else {
+        throw new Error("Project is null")
     }
 }
 
